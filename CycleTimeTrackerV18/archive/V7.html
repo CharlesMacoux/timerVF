@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Cycle Time</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    /* ---------- FONTS ---------- */
+    @font-face {
+      font-family: 'SonsCondensed';
+      src: url('fonts/SonsCondensed-Semibold.ttf') format('truetype');
+      font-weight: 600;
+    }
+    @font-face {
+      font-family: 'SonsCondensedExtra';
+      src: url('fonts/SonsCondensed-Extrabold.ttf') format('truetype');
+      font-weight: 800;
+    }
+    @font-face {
+      font-family: 'Inter';
+      src: url('fonts/Inter-Regular.otf') format('opentype');
+      font-weight: 400;
+    }
+
+    :root{
+      --green: #c8ff08;
+      --teal:  #005E60;
+      --btn-hover: #a6d607;
+      --teal-dark: #013d3d;
+    }
+
+    html,body{height:100%; margin:0;}
+    body{
+      background:var(--teal);
+      color:white;
+      font-family: 'SonsCondensed', Arial, sans-serif;
+      display:flex;
+      flex-direction:column;
+      min-height:100vh;
+    }
+
+    #banner{
+      width:100%;
+      height:15vh;
+      max-height:180px;
+      object-fit:contain;
+      background:var(--teal);
+      display:block;
+    }
+
+    /* Pale + Moule + Type top-left */
+    #paleStat, #mouleStat, #typeStat {
+      position: absolute;
+      left: 20px;
+      font-size: 6vh;
+      font-family: 'SonsCondensed', sans-serif;
+    }
+    #paleStat { top: 40px; }
+    #mouleStat { top: 100px; }
+    #typeStat { top: 160px; cursor:pointer; text-decoration:underline; }
+
+    /* Stats top-right */
+    #stats {
+      position: absolute;
+      top: 40px;
+      right: 20px;
+      font-size: 6vh;
+      font-family: 'SonsCondensed', sans-serif;
+      display: grid;
+      gap: 6px 18px;
+    }
+    .stat { display:flex; justify-content:flex-end; gap:12px; }
+    .label { min-width:10ch; text-align:right; font-weight:600; }
+    .value { min-width:12ch; text-align:left; font-weight:600; }
+    .target-time { color: var(--green); }
+
+    /* Timer */
+    #main { flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; }
+    #timer {
+      font-family: 'SonsCondensedExtra','Courier New',monospace;
+      font-variant-numeric: tabular-nums;
+      font-size: 50vh;
+      min-width:7.05ch;
+      text-align:left;
+      line-height:1;
+      margin:0 auto 2vh auto;
+      color: var(--green);
+      -webkit-text-stroke: 0px transparent;
+      text-shadow: none;
+      transition: color .2s ease;
+    }
+    #timer.red {
+      color:red;
+      -webkit-text-stroke: 4px var(--teal-dark);
+      text-shadow:
+        -1px -1px 0 var(--teal-dark),
+         1px -1px 0 var(--teal-dark),
+        -1px  1px 0 var(--teal-dark),
+         1px  1px 0 var(--teal-dark);
+    }
+
+    /* Blade input + Start */
+    #bladeContainer{ display:flex; gap:1vw; align-items:center; justify-content:center; margin-top:1vh; }
+    #bladeInput {
+      font-family:'Inter',sans-serif;
+      font-size:2.3vh;
+      height:5.5vh; min-height:40px;
+      border-radius:0.1vh; 
+      border:none;
+      padding:0 1.6vh;
+      width:12ch;
+      text-align:center;
+    }
+
+    button.controlBtn {
+      font-family:'Inter',sans-serif;
+      font-size:2.3vh;
+      height:6.5vh; min-height:40px;
+      border-radius:1vh; 
+      border:none;
+      padding:0 1.6vh;
+      background:white;
+      color:var(--teal);
+      cursor:pointer;
+    }
+
+    button.controlBtn[disabled]{ opacity:1; cursor:not-allowed; background:#888; color:#ddd; }
+    button.controlBtn:hover:not([disabled]){ background:var(--green); color:#003; }
+    #stopBtn{ display:none; margin-top:1.5vh; }
+
+    /* Popup */
+    #popupOverlay{ position:fixed; inset:0; display:none; justify-content:center; align-items:center; background:rgba(0,0,0,0.55); }
+    #popup{
+      background:#fff;
+      padding:30px 40px;
+      border-radius:12px;
+      min-width:320px;
+      text-align:center;
+      font-family:'Inter',sans-serif;
+      box-shadow:0 4px 12px rgba(0,0,0,0.3);
+    }
+    #popup h2{ margin:0 0 18px; font-size:1.4rem; color:#000; }
+    #popup input{
+      width:80%;
+      padding:10px;
+      text-align:center;
+      font-size:1rem;
+      border:1px solid #ccc;
+      border-radius:6px;
+    }
+    #popup .buttons{
+      margin-top:16px;
+      display:flex;
+      justify-content:center;
+      gap:14px;
+    }
+    #popup .buttons button{
+      font-family:'Inter',sans-serif;
+      font-size:1rem;
+      padding:12px 24px;
+      border:none;
+      border-radius:8px;
+      background:#eee;
+      color:var(--teal);
+      cursor:pointer;
+      transition:background 0.2s;
+    }
+    #popup .buttons button:hover:not([disabled]){
+      background:var(--green);
+    }
+    #popup .buttons button:disabled{
+      background:#888;
+      cursor:not-allowed;
+    }
+    #popup .msg{ margin-top:12px; min-height:1.2em; color:#b00; font-size:.95rem; }
+  </style>
+</head>
+<body>
+  <img id="banner" src="images/gebanner3.jpg" alt="GE banner">
+  <div id="paleStat">Pale :</div>
+  <div id="mouleStat">Moule : 02</div>
+  <div id="typeStat">Type : <span id="typeVal">47.3</span></div>
+
+  <div id="stats">
+    <div class="stat"><span class="label">Moyenne :</span><span class="value" id="averageVal">--:--:--</span></div>
+    <div class="stat"><span class="label">Meilleur :</span><span class="value" id="bestVal">--:--:--</span></div>
+    <div class="stat"><span class="label">Objectif :</span><span class="value target-time" id="targetVal">24:00:00</span></div>
+  </div>
+
+  <div id="main">
+    <div id="timer">00:00:00</div>
+    <div id="bladeContainer">
+      <input id="bladeInput" type="text" maxlength="4" placeholder="Entrer # Pale Ici" inputmode="numeric" pattern="\d*">
+      <button id="startBtn" class="controlBtn" disabled>Commencer</button>
+    </div>
+    <button id="stopBtn" class="controlBtn">Stop</button>
+  </div>
+
+  <div id="popupOverlay">
+    <div id="popup">
+      <h2>Veuillez entrer le mot de passe</h2>
+      <input id="passwordInput" type="password" autocomplete="off">
+      <div class="buttons">
+        <button id="cancelPassword">Annuler</button>
+        <button id="confirmPassword" disabled>Confirmer</button>
+      </div>
+      <div class="msg" id="popupMsg"></div>
+    </div>
+  </div>
+
+  <!-- audio element; play once when triggered -->
+  <audio id="alarmSound" src="music/mario.mp3" preload="auto"></audio>
+
+  <script>
+    /* === Configuration === */
+    const TYPE_SETTINGS = { "47.3": 24*3600, "62.2": 30*3600 }; 
+    const PASSWORD = "4321";
+    const LOCKOUT_SECONDS = 60;
+
+    /* === Persistent storage keys === */
+    const STORAGE_KEY_STATS = 'ct_stats_v1';
+    const STORAGE_KEY_TYPE = 'ct_selectedType_v1';
+
+    /* === State === */
+    let selectedType = localStorage.getItem(STORAGE_KEY_TYPE) || '47.3';
+
+    // stats format: { "47.3": { runs: [seconds,...], count: N }, "62.2": { runs: [...], count: N } }
+    let stats = loadStatsFromStorage();
+
+    let running = false;
+    let startTimestamp = null;
+    let tickTimeoutId = null;
+    let alarmPlayed = false;
+    let failCount = 0;
+    let lockoutUntil = 0;
+
+    /* === Elements === */
+    const timerEl = document.getElementById('timer');
+    const typeValEl = document.getElementById('typeVal');
+    const targetValEl = document.getElementById('targetVal');
+    const averageVal = document.getElementById('averageVal');
+    const bestVal = document.getElementById('bestVal');
+    const paleStat = document.getElementById('paleStat');
+    const bladeInput = document.getElementById('bladeInput');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const typeStat = document.getElementById('typeStat');
+    const popupOverlay = document.getElementById('popupOverlay');
+    const passwordInput = document.getElementById('passwordInput');
+    const confirmPassword = document.getElementById('confirmPassword');
+    const cancelPassword = document.getElementById('cancelPassword');
+    const popupMsg = document.getElementById('popupMsg');
+    const alarmSound = document.getElementById('alarmSound');
+
+    /* === Helpers === */
+    function loadStatsFromStorage(){
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY_STATS);
+        if (!raw) {
+          const base = { "47.3": { runs: [], count: 0 }, "62.2": { runs: [], count: 0 } };
+          localStorage.setItem(STORAGE_KEY_STATS, JSON.stringify(base));
+          return base;
+        }
+        const parsed = JSON.parse(raw);
+        // ensure keys exist
+        parsed["47.3"] = parsed["47.3"] || { runs: [], count: 0 };
+        parsed["62.2"] = parsed["62.2"] || { runs: [], count: 0 };
+        return parsed;
+      } catch {
+        const base = { "47.3": { runs: [], count: 0 }, "62.2": { runs: [], count: 0 } };
+        localStorage.setItem(STORAGE_KEY_STATS, JSON.stringify(base));
+        return base;
+      }
+    }
+    function saveStatsToStorage(){
+      localStorage.setItem(STORAGE_KEY_STATS, JSON.stringify(stats));
+      localStorage.setItem(STORAGE_KEY_TYPE, selectedType);
+    }
+    function formatHMS(s){
+      const h = String(Math.floor(s/3600)).padStart(2,'0');
+      const m = String(Math.floor((s%3600)/60)).padStart(2,'0');
+      const sec = String(s%60).padStart(2,'0');
+      return `${h}:${m}:${sec}`;
+    }
+
+    /* === UI update === */
+    function updateStatsUI(){
+      const runs = stats[selectedType].runs || [];
+      if (runs.length === 0){
+        averageVal.textContent = '--:--:--';
+        bestVal.textContent = '--:--:--';
+      } else {
+        const avg = Math.floor(runs.reduce((a,b)=>a+b,0)/runs.length);
+        const best = Math.min(...runs);
+        averageVal.textContent = formatHMS(avg);
+        bestVal.textContent = formatHMS(best);
+      }
+      targetValEl.textContent = (TYPE_SETTINGS[selectedType] === 24) ? '24:00:00' : '30:00:00';
+      typeValEl.textContent = selectedType;
+    }
+
+    /* === Timer: precise tick using setTimeout aligned to real time === */
+    function startTimer(){
+      running = true;
+      alarmPlayed = false;
+      startTimestamp = Date.now();
+      timerEl.textContent = '00:00:00';
+      timerEl.classList.remove('red');
+      scheduleTick(); // first tick now
+      // lock type toggle visually
+      typeStat.style.textDecoration = 'none';
+    }
+
+    function scheduleTick(){
+      if (!running) return;
+      tick(); // update display immediately
+      // compute ms until next second boundary
+      const msSinceStart = Date.now() - startTimestamp;
+      const nextTick = 1000 - (msSinceStart % 1000) || 1000;
+      tickTimeoutId = setTimeout(scheduleTick, nextTick);
+    }
+
+    function tick(){
+      if (!running) return;
+      const elapsed = Math.floor((Date.now() - startTimestamp) / 1000);
+      timerEl.textContent = formatHMS(elapsed);
+
+      if (elapsed >= TYPE_SETTINGS[selectedType]){
+        timerEl.classList.add('red');
+        if (!alarmPlayed){
+          alarmPlayed = true;
+          alarmSound.currentTime = 0;
+          // play once; catch errors (autoplay policies)
+          alarmSound.play().catch(()=>{});
+        }
+      } else {
+        timerEl.classList.remove('red');
+      }
+    }
+
+    function stopTimerInternal(){
+      if (tickTimeoutId) { clearTimeout(tickTimeoutId); tickTimeoutId = null; }
+      running = false;
+      // unlock type toggle visually
+      typeStat.style.textDecoration = 'underline';
+      // reset alarm state so next run can play again
+      alarmPlayed = false;
+      // stop audio if still playing
+      try { alarmSound.pause(); alarmSound.currentTime = 0; } catch(e){}
+    }
+
+    /* === UI wiring === */
+    // allow only digits in Pale input; also update start button enabled state
+    bladeInput.addEventListener('input', (e) => {
+      const cleaned = bladeInput.value.replace(/\D/g, '');
+      if (cleaned !== bladeInput.value) bladeInput.value = cleaned;
+      startBtn.disabled = bladeInput.value.length !== 4;
+    });
+
+    // additionally prevent non-digit keys from producing characters while focused:
+    document.addEventListener('keydown', (e) => {
+      // If user focuses the Pale input, block non-digit characters (but allow backspace, arrows, etc.)
+      const active = document.activeElement;
+      if (active === bladeInput) {
+        // allow navigation & control keys
+        const allowed = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Home','End'];
+        if (allowed.indexOf(e.key) === -1) {
+          // allow digits (0-9)
+          if (!/^\d$/.test(e.key)) {
+            e.preventDefault();
+            return;
+          }
+        }
+      }
+    });
+
+    // Start button
+    startBtn.addEventListener('click', () => {
+      paleStat.textContent = 'Pale : ' + bladeInput.value;
+      bladeInput.value = ''; // clear as requested
+      startBtn.disabled = true;
+      document.getElementById('bladeContainer').style.display = 'none';
+      stopBtn.style.display = 'inline-block';
+      startTimer();
+    });
+
+    // Stop button opens password popup
+    stopBtn.addEventListener('click', () => {
+      if (Date.now() < lockoutUntil){
+        const remaining = Math.ceil((lockoutUntil - Date.now())/1000);
+        alert(`Verrouillé. Attendez ${remaining}s.`);
+        return;
+      }
+      popupOverlay.style.display = 'flex';
+      passwordInput.value = '';
+      confirmPassword.disabled = true;
+      popupMsg.textContent = '';
+      passwordInput.focus();
+    });
+
+    // password input -> enable confirm when non-empty
+    passwordInput.addEventListener('input', () => {
+      confirmPassword.disabled = passwordInput.value.trim().length === 0;
+    });
+
+    // cancel password
+    cancelPassword.addEventListener('click', () => {
+      popupOverlay.style.display = 'none';
+      passwordInput.value = '';
+      confirmPassword.disabled = true;
+    });
+
+    // confirm password -> stop if correct, otherwise handle attempts and lockout
+    confirmPassword.addEventListener('click', () => {
+      if (passwordInput.value === PASSWORD){
+        // success: stop timer and save run
+        const elapsed = running && startTimestamp ? Math.floor((Date.now() - startTimestamp)/1000) : 0;
+        stopTimerInternal();
+
+        // save run (only if timer was running)
+        if (elapsed > 0){
+          stats[selectedType].runs.push(elapsed);
+          stats[selectedType].count = (stats[selectedType].count || 0) + 1;
+          saveStatsToStorage();
+        }
+
+        // update UI and reset to home state
+        updateStatsUI();
+        timerEl.textContent = '00:00:00';
+        timerEl.classList.remove('red');
+        paleStat.textContent = 'Pale :';
+        document.getElementById('bladeContainer').style.display = 'flex';
+        startBtn.disabled = true;
+        stopBtn.style.display = 'none';
+        popupOverlay.style.display = 'none';
+        failCount = 0;
+      } else {
+        // failure
+        failCount++;
+        passwordInput.value = '';
+        confirmPassword.disabled = true;
+        if (failCount >= 3){
+          popupMsg.textContent = `Trop d'essais. Verrouillé ${LOCKOUT_SECONDS}s.`;
+          lockoutUntil = Date.now() + LOCKOUT_SECONDS*1000;
+          // auto-close popup after 2.5s
+          setTimeout(()=>{ popupOverlay.style.display = 'none'; }, 2500);
+          stopBtn.disabled = true;
+          // re-enable stop after lockout
+          setTimeout(()=>{ stopBtn.disabled = false; failCount = 0; }, LOCKOUT_SECONDS*1000);
+        } else {
+          popupMsg.textContent = `Incorrect. Essais restants: ${3 - failCount}`;
+        }
+      }
+    });
+
+    // Type toggle (click "Type : 47.3" region)
+    typeStat.addEventListener('click', () => {
+      if (running) return; // locked while running
+      selectedType = (selectedType === '47.3') ? '62.2' : '47.3';
+      saveStatsToStorage();
+      updateStatsUI();
+    });
+
+    /* === Secret reset: C + L + R (only clears active type, persistent) === */
+    const pressed = new Set();
+    function resetCurrentTypeStats(){
+      stats[selectedType] = { runs: [], count: 0 };
+      saveStatsToStorage();
+      updateStatsUI();
+      // visual feedback in console; no popup as requested
+      console.log('Stats reset for', selectedType);
+    }
+
+    document.addEventListener('keydown', (e) => {
+      // track keys pressed (lowercased)
+      const k = (e.key || '').toLowerCase();
+      pressed.add(k);
+
+      // If C+L+R are down, act and prevent default so chars don't appear in inputs
+      if (pressed.has('c') && pressed.has('l') && pressed.has('r')) {
+        // prevent stray characters in inputs (like ®)
+        e.preventDefault();
+        resetCurrentTypeStats();
+        // clear the set so it doesn't repeatedly fire while keys held
+        pressed.clear();
+      }
+    });
+    document.addEventListener('keyup', (e) => {
+      pressed.delete((e.key || '').toLowerCase());
+    });
+
+    /* === Storage helpers & init === */
+    function saveStatsToStorage(){
+      localStorage.setItem(STORAGE_KEY_STATS, JSON.stringify(stats));
+      localStorage.setItem(STORAGE_KEY_TYPE, selectedType);
+    }
+
+    // ensure stats exist for both types
+    if (!stats['47.3']) stats['47.3'] = { runs: [], count: 0 };
+    if (!stats['62.2']) stats['62.2'] = { runs: [], count: 0 };
+
+    // init UI from storage
+    updateStatsUI();
+    saveStatsToStorage();
+
+    // small guard: when page unloads, clear any running tick
+    window.addEventListener('beforeunload', () => {
+      if (tickTimeoutId) clearTimeout(tickTimeoutId);
+    });
+  </script>
+</body>
+</html>
