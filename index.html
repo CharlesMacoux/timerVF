@@ -335,23 +335,13 @@ const analytics = getAnalytics(app);
     input, button, textarea { pointer-events: auto; }
   </style>
 </head>
-  <script>
-  const timerRef = database.ref('timer'); // Crée un emplacement "timer" dans la base
+<script>
+  const timerRef = database.ref('timer');
 
   let timerValue = 0;
+  let timerRunning = false;
   let timerInterval = null;
 
-  // Fonction pour démarrer le timer
-  function startTimer() {
-    timerInterval = setInterval(() => {
-      timerValue++;
-      document.getElementById('timer').innerText = formatTime(timerValue);
-      // Sauvegarde dans Firebase
-      timerRef.set({ value: timerValue });
-    }, 1000);
-  }
-
-  // Formatte les secondes en hh:mm:ss
   function formatTime(seconds) {
     const h = Math.floor(seconds / 3600).toString().padStart(2,'0');
     const m = Math.floor((seconds % 3600) / 60).toString().padStart(2,'0');
@@ -359,21 +349,37 @@ const analytics = getAnalytics(app);
     return `${h}:${m}:${s}`;
   }
 
-  // Lecture initiale depuis Firebase
+  function startTimer() {
+    if(timerRunning) return; // pas redémarrer si déjà en cours
+    timerRunning = true;
+    document.getElementById('startBtn').disabled = true;
+
+    timerInterval = setInterval(() => {
+      timerValue++;
+      document.getElementById('timer').innerText = formatTime(timerValue);
+      timerRef.set({ value: timerValue, running: true }); // sauvegarde
+    }, 1000);
+  }
+
+  // Lire l’état du timer depuis Firebase
   timerRef.on('value', (snapshot) => {
     const data = snapshot.val();
-    if(data && data.value !== undefined){
-      timerValue = data.value;
+    if(data){
+      timerValue = data.value || 0;
+      timerRunning = data.running || false;
       document.getElementById('timer').innerText = formatTime(timerValue);
+      document.getElementById('startBtn').disabled = timerRunning;
+      if(timerRunning && !timerInterval){
+        startTimer();
+      }
     }
   });
 
-  // Écoute du bouton Start
   document.getElementById('startBtn').addEventListener('click', () => {
     startTimer();
-    document.getElementById('startBtn').disabled = true;
   });
 </script>
+
 
 <body>
   <img id="banner" src="images/gebanner3.jpg" alt="GE banner">
@@ -1614,5 +1620,6 @@ window.addEventListener('beforeunload', ()=> { if (tickTimeoutId) clearTimeout(t
 </script>
 </body>
 </html>
+
 
 
