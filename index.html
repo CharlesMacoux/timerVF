@@ -4,157 +4,98 @@
   <meta charset="utf-8" />
   <title>Timer v18</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
-  <!-- Firebase compat SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+  <style>
+    /* ----- Styles simplifiés pour le timer ----- */
+    body { font-family: Arial, sans-serif; background:#005E60; color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; margin:0; }
+    #timer { font-size:10vh; margin-bottom:2vh; }
+    #startBtn { font-size:2rem; padding:10px 20px; border:none; border-radius:6px; cursor:pointer; }
+    #startBtn:disabled { opacity:0.6; cursor:not-allowed; }
+  </style>
+</head>
+<body>
+
+  <div id="timer">00:00:00</div>
+  <button id="startBtn">Commencer</button>
 
   <script>
+    // ----- Configuration Firebase -----
     const firebaseConfig = {
       apiKey: "AIzaSyCJ-2de7M8XQEgRof6P7vhoRYIAZeR9ztE",
       authDomain: "timer-76fc8.firebaseapp.com",
-      databaseURL: "https://timer-76fc8-default-rtdb.firebaseio.com/",
+      databaseURL: "https://timer-76fc8-default-rtdb.firebaseio.com",
       projectId: "timer-76fc8",
       storageBucket: "timer-76fc8.appspot.com",
       messagingSenderId: "15338816600",
       appId: "1:15338816600:web:9d571004f255dada7e762d"
     };
+
     // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
+    const app = firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
+    const timerRef = database.ref('timer');
+
+    // ----- Timer -----
+    let timerValue = 0;
+    let timerRunning = false;
+    let timerInterval = null;
+
+    function formatTime(seconds) {
+      const h = Math.floor(seconds / 3600).toString().padStart(2,'0');
+      const m = Math.floor((seconds % 3600) / 60).toString().padStart(2,'0');
+      const s = (seconds % 60).toString().padStart(2,'0');
+      return `${h}:${m}:${s}`;
+    }
+
+    function updateDisplay() {
+      document.getElementById('timer').innerText = formatTime(timerValue);
+      document.getElementById('startBtn').disabled = timerRunning;
+    }
+
+    function startTimer() {
+      if(timerRunning) return;
+      timerRunning = true;
+      updateDisplay();
+      timerInterval = setInterval(() => {
+        timerValue++;
+        updateDisplay();
+        timerRef.set({ value: timerValue, running: true });
+      }, 1000);
+    }
+
+    // Initialiser le timer si pas de données
+    timerRef.once('value').then(snapshot => {
+      const data = snapshot.val();
+      if(data){
+        timerValue = data.value || 0;
+        timerRunning = data.running || false;
+      } else {
+        timerRef.set({ value: 0, running: false });
+      }
+      updateDisplay();
+      if(timerRunning) startTimer();
+    });
+
+    // Synchronisation en temps réel
+    timerRef.on('value', snapshot => {
+      const data = snapshot.val();
+      if(data){
+        timerValue = data.value || 0;
+        timerRunning = data.running || false;
+        updateDisplay();
+        if(timerRunning && !timerInterval) startTimer();
+      }
+    });
+
+    // Bouton start
+    document.getElementById('startBtn').addEventListener('click', startTimer);
   </script>
 
-  <style>
-    /* ---------- FONTS ---------- */
-    @font-face { font-family: 'SonsCondensed'; src: url('fonts/SonsCondensed-Semibold2.ttf') format('truetype'); font-weight: 600; }
-    @font-face { font-family: 'SonsCondensedExtra'; src: url('fonts/SonsCondensed-Extrabold4.ttf') format('truetype'); font-weight: 800; }
-    @font-face { font-family: 'Inter'; src: url('fonts/Inter-Regular.otf') format('opentype'); font-weight: 400; }
 
-    :root{
-      --green: #c8ff08;
-      --teal:  #005E60;
-      --btn-bckgrnd: #dee3ca;
-      --teal-dark: #013d3d;
-    }
-
-    html,body{height:100%; margin:0;}
-    body{
-      background:var(--teal);
-      color:white;
-      font-family: 'SonsCondensed', Arial, sans-serif;
-      display:flex;
-      flex-direction:column;
-      min-height:100vh;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
-
-    #banner{ width:100%; height:15vh; max-height:180px; object-fit:contain; background:var(--teal); display:block; }
-    #paleStat, #mouleStat, #typeStat { position: absolute; left: 20px; font-size: 6vh; font-family: 'SonsCondensed', sans-serif; }
-    #paleStat { top: 40px; display:flex; align-items:center; gap:0.6ch; }
-    #mouleStat { top: 100px; }
-    #typeStat { top: 160px; text-decoration:none; cursor:default; }
-    #paleInlineInput { display: none; margin-left: 0.1ch; font-family: 'SonsCondensed', sans-serif; font-size: 6vh; font-weight: 600; color: white; background: transparent; border: none; outline: none; cursor: text; pointer-events: auto; }
-    #paleInlineInput::placeholder { color: rgba(255,255,255,0.35); }
-
-    #stats { position: absolute; top: 40px; right: 20px; font-size: 6vh; font-family: 'SonsCondensed', sans-serif; display: grid; gap: 6px 18px; }
-    .stat { display:flex; justify-content:flex-end; gap:12px; }
-    .label { min-width:10ch; text-align:right; font-weight:600; }
-    .value { min-width:12ch; text-align:left; font-weight:600; }
-    .target-time { color: var(--green); }
-
-    #main { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-    #stepLabel { font-family: 'SonsCondensed', sans-serif; font-weight: 600; font-size: 8vh; color: var(--green); text-align: center; width: 100%; margin-bottom: 2vh; min-height: 1.2em; }
-    #timer { font-family: 'SonsCondensedExtra', 'Courier New', monospace; font-variant-numeric: tabular-nums; font-size: 59vh; text-align: center; line-height: 1; margin: 0 auto 2vh auto; color: var(--green); transition: color .2s ease; user-select: none; }
-
-    #bladeContainer{ display:flex; gap:1vw; align-items:center; justify-content:center; margin-top:1vh; }
-    #bladeInput { font-family:'Inter',sans-serif; font-size:2.3vh; height:4.7vh; min-height:40px; border-radius:6px; border:1px solid rgba(255,255,255,0.6); padding:0 1.2vh; width:16ch; text-align:center; background:#fff; color:var(--teal); outline:none; }
-    button.controlBtn { font-family: 'Inter', sans-serif; font-size: 1rem; height: 50px; padding: 8px 10px; border-radius: 6px; border: none; cursor: pointer; background: white; color: var(--teal); box-sizing: border-box; margin: 0; display: inline-flex; align-items: center; line-height: 1; gap: 8px; }
-    button.controlBtn[disabled]{ opacity:1; cursor:not-allowed; background:#888; color:#ddd; }
-    button.controlBtn:hover:not([disabled]){ background:var(--green); color:#003; }
-  </style>
-</head>
-<body>
-  <img id="banner" src="images/gebanner3.jpg" alt="GE banner">
-  <div id="paleStat">Pale : <input id="paleInlineInput" type="text" maxlength="8" inputmode="numeric" placeholder="1234" aria-label="Pale number"></div>
-  <div id="mouleStat">Moule : 02</div>
-  <div id="typeStat">Type : <span id="typeVal">47.3</span></div>
-
-  <div id="stats">
-    <div class="stat"><span class="label">Moyenne :</span><span class="value" id="averageVal">--:--:--</span></div>
-    <div class="stat"><span class="label">Meilleur :</span><span class="value" id="bestVal">--:--:--</span></div>
-    <div class="stat"><span class="label">Objectif :</span><span class="value target-time" id="targetVal">24:00:00</span></div>
-  </div>
-
-  <div id="main">
-    <div id="stepLabel"></div>
-    <div id="timer">00:00:00</div>
-
-    <div id="bladeContainer">
-      <input id="bladeInput" type="text" maxlength="4" placeholder="Entrer # Pale Ici" inputmode="numeric" pattern="\d*">
-      <button id="startBtn" class="controlBtn">Commencer</button>
-    </div>
-  </div>
-
-  <script>
-  const timerRef = database.ref('timer');
-
-  let timerValue = 0;
-  let timerRunning = false;
-  let timerInterval = null;
-
-  function formatTime(seconds) {
-    const h = Math.floor(seconds / 3600).toString().padStart(2,'0');
-    const m = Math.floor((seconds % 3600) / 60).toString().padStart(2,'0');
-    const s = (seconds % 60).toString().padStart(2,'0');
-    return `${h}:${m}:${s}`;
-  }
-
-  function startTimer() {
-    if(timerRunning) return;
-    timerRunning = true;
-    document.getElementById('startBtn').disabled = true;
-
-    timerInterval = setInterval(() => {
-      timerValue++;
-      document.getElementById('timer').innerText = formatTime(timerValue);
-      timerRef.set({ value: timerValue, running: true });
-    }, 1000);
-  }
-
-  // Lire et initialiser le timer depuis Firebase
-  timerRef.once('value').then((snapshot) => {
-    const data = snapshot.val();
-    if(data){
-      timerValue = data.value || 0;
-      timerRunning = data.running || false;
-      document.getElementById('timer').innerText = formatTime(timerValue);
-      document.getElementById('startBtn').disabled = timerRunning;
-      if(timerRunning) startTimer();
-    } else {
-      // Pas de données dans Firebase -> initialiser
-      timerRef.set({ value: 0, running: false });
-    }
-  });
-
-  // Ecoute en temps réel pour synchroniser toutes les fenêtres
-  timerRef.on('value', (snapshot) => {
-    const data = snapshot.val();
-    if(data){
-      timerValue = data.value || 0;
-      timerRunning = data.running || false;
-      document.getElementById('timer').innerText = formatTime(timerValue);
-      document.getElementById('startBtn').disabled = timerRunning;
-      if(timerRunning && !timerInterval){
-        startTimer();
-      }
-    }
-  });
-
-  document.getElementById('startBtn').addEventListener('click', () => {
-    startTimer();
-  });
-</script>
 
 
 
@@ -1399,6 +1340,7 @@ window.addEventListener('beforeunload', ()=> { if (tickTimeoutId) clearTimeout(t
 </script>
 </body>
 </html>
+
 
 
 
