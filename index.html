@@ -97,48 +97,65 @@
   </div>
 
   <script>
-    const timerRef = database.ref('timer');
+  const timerRef = database.ref('timer');
 
-    let timerValue = 0;
-    let timerRunning = false;
-    let timerInterval = null;
+  let timerValue = 0;
+  let timerRunning = false;
+  let timerInterval = null;
 
-    function formatTime(seconds) {
-      const h = Math.floor(seconds / 3600).toString().padStart(2,'0');
-      const m = Math.floor((seconds % 3600) / 60).toString().padStart(2,'0');
-      const s = (seconds % 60).toString().padStart(2,'0');
-      return `${h}:${m}:${s}`;
+  function formatTime(seconds) {
+    const h = Math.floor(seconds / 3600).toString().padStart(2,'0');
+    const m = Math.floor((seconds % 3600) / 60).toString().padStart(2,'0');
+    const s = (seconds % 60).toString().padStart(2,'0');
+    return `${h}:${m}:${s}`;
+  }
+
+  function startTimer() {
+    if(timerRunning) return;
+    timerRunning = true;
+    document.getElementById('startBtn').disabled = true;
+
+    timerInterval = setInterval(() => {
+      timerValue++;
+      document.getElementById('timer').innerText = formatTime(timerValue);
+      timerRef.set({ value: timerValue, running: true });
+    }, 1000);
+  }
+
+  // Lire et initialiser le timer depuis Firebase
+  timerRef.once('value').then((snapshot) => {
+    const data = snapshot.val();
+    if(data){
+      timerValue = data.value || 0;
+      timerRunning = data.running || false;
+      document.getElementById('timer').innerText = formatTime(timerValue);
+      document.getElementById('startBtn').disabled = timerRunning;
+      if(timerRunning) startTimer();
+    } else {
+      // Pas de données dans Firebase -> initialiser
+      timerRef.set({ value: 0, running: false });
     }
+  });
 
-    function startTimer() {
-      if(timerRunning) return;
-      timerRunning = true;
-      document.getElementById('startBtn').disabled = true;
-
-      timerInterval = setInterval(() => {
-        timerValue++;
-        document.getElementById('timer').innerText = formatTime(timerValue);
-        timerRef.set({ value: timerValue, running: true });
-      }, 1000);
-    }
-
-    timerRef.on('value', (snapshot) => {
-      const data = snapshot.val();
-      if(data){
-        timerValue = data.value || 0;
-        timerRunning = data.running || false;
-        document.getElementById('timer').innerText = formatTime(timerValue);
-        document.getElementById('startBtn').disabled = timerRunning;
-        if(timerRunning && !timerInterval){
-          startTimer();
-        }
+  // Ecoute en temps réel pour synchroniser toutes les fenêtres
+  timerRef.on('value', (snapshot) => {
+    const data = snapshot.val();
+    if(data){
+      timerValue = data.value || 0;
+      timerRunning = data.running || false;
+      document.getElementById('timer').innerText = formatTime(timerValue);
+      document.getElementById('startBtn').disabled = timerRunning;
+      if(timerRunning && !timerInterval){
+        startTimer();
       }
-    });
+    }
+  });
 
-    document.getElementById('startBtn').addEventListener('click', () => {
-      startTimer();
-    });
-  </script>
+  document.getElementById('startBtn').addEventListener('click', () => {
+    startTimer();
+  });
+</script>
+
 
 
 
@@ -1382,6 +1399,7 @@ window.addEventListener('beforeunload', ()=> { if (tickTimeoutId) clearTimeout(t
 </script>
 </body>
 </html>
+
 
 
 
