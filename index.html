@@ -335,6 +335,46 @@ const analytics = getAnalytics(app);
     input, button, textarea { pointer-events: auto; }
   </style>
 </head>
+  <script>
+  const timerRef = database.ref('timer'); // Crée un emplacement "timer" dans la base
+
+  let timerValue = 0;
+  let timerInterval = null;
+
+  // Fonction pour démarrer le timer
+  function startTimer() {
+    timerInterval = setInterval(() => {
+      timerValue++;
+      document.getElementById('timer').innerText = formatTime(timerValue);
+      // Sauvegarde dans Firebase
+      timerRef.set({ value: timerValue });
+    }, 1000);
+  }
+
+  // Formatte les secondes en hh:mm:ss
+  function formatTime(seconds) {
+    const h = Math.floor(seconds / 3600).toString().padStart(2,'0');
+    const m = Math.floor((seconds % 3600) / 60).toString().padStart(2,'0');
+    const s = (seconds % 60).toString().padStart(2,'0');
+    return `${h}:${m}:${s}`;
+  }
+
+  // Lecture initiale depuis Firebase
+  timerRef.on('value', (snapshot) => {
+    const data = snapshot.val();
+    if(data && data.value !== undefined){
+      timerValue = data.value;
+      document.getElementById('timer').innerText = formatTime(timerValue);
+    }
+  });
+
+  // Écoute du bouton Start
+  document.getElementById('startBtn').addEventListener('click', () => {
+    startTimer();
+    document.getElementById('startBtn').disabled = true;
+  });
+</script>
+
 <body>
   <img id="banner" src="images/gebanner3.jpg" alt="GE banner">
   <div id="paleStat">Pale : <input id="paleInlineInput" type="text" maxlength="8" inputmode="numeric" placeholder="1234" aria-label="Pale number"></div>
@@ -1574,4 +1614,5 @@ window.addEventListener('beforeunload', ()=> { if (tickTimeoutId) clearTimeout(t
 </script>
 </body>
 </html>
+
 
